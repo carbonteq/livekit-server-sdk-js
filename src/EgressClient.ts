@@ -4,6 +4,7 @@ import {
   EncodedFileOutput,
   EncodingOptions,
   EncodingOptionsPreset,
+  FileAndStreamOutput,
   ListEgressRequest,
   ListEgressResponse,
   RoomCompositeEgressRequest,
@@ -214,14 +215,14 @@ export class EgressClient extends ServiceBase {
    */
   async startTrackCompositeEgress(
     roomName: string,
-    output: EncodedFileOutput | SegmentedFileOutput | StreamOutput,
+    output: EncodedFileOutput | SegmentedFileOutput | StreamOutput | FileAndStreamOutput,
     audioTrackId?: string,
     videoTrackId?: string,
     options?: EncodingOptionsPreset | EncodingOptions,
   ): Promise<EgressInfo>;
   async startTrackCompositeEgress(
     roomName: string,
-    output: EncodedFileOutput | SegmentedFileOutput | StreamOutput,
+    output: EncodedFileOutput | SegmentedFileOutput | StreamOutput | FileAndStreamOutput,
     optsOrAudioTrackId?: TrackCompositeOptions | string,
     videoTrackId?: string,
     options?: EncodingOptionsPreset | EncodingOptions,
@@ -241,13 +242,14 @@ export class EgressClient extends ServiceBase {
     audioTrackId ??= '';
     videoTrackId ??= '';
 
-    const { file, segments, stream, preset, advanced } = this.getOutputParams(output, options);
+    const { file, segments, stream,fileAndStream, preset, advanced } = this.getOutputParams(output, options);
     const req = TrackCompositeEgressRequest.toJSON({
       roomName,
       audioTrackId,
       videoTrackId,
       file,
       stream,
+      fileAndStream,
       segments,
       preset,
       advanced,
@@ -263,11 +265,12 @@ export class EgressClient extends ServiceBase {
   }
 
   private getOutputParams(
-    output: EncodedFileOutput | SegmentedFileOutput | StreamOutput,
+    output: EncodedFileOutput | SegmentedFileOutput | StreamOutput | FileAndStreamOutput,
     options?: EncodingOptionsPreset | EncodingOptions,
   ) {
     let file: EncodedFileOutput | undefined;
     let stream: StreamOutput | undefined;
+    let fileAndStream: FileAndStreamOutput | undefined;
     let segments: SegmentedFileOutput | undefined;
     let preset: EncodingOptionsPreset | undefined;
     let advanced: EncodingOptions | undefined;
@@ -276,7 +279,11 @@ export class EgressClient extends ServiceBase {
       file = <EncodedFileOutput>output;
     } else if ((<SegmentedFileOutput>output).filenamePrefix !== undefined) {
       segments = <SegmentedFileOutput>output;
-    } else {
+    } else if ((<FileAndStreamOutput>output).filepath !== undefined) {
+
+      fileAndStream = <FileAndStreamOutput>output;
+    }
+    else {
       stream = <StreamOutput>output;
     }
 
@@ -288,7 +295,7 @@ export class EgressClient extends ServiceBase {
       }
     }
 
-    return { file, segments, stream, preset, advanced };
+    return { file, segments, stream,fileAndStream, preset, advanced };
   }
 
   /**

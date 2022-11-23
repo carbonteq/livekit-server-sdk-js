@@ -350,12 +350,12 @@ export interface RoomCompositeEgressRequest {
   file?: EncodedFileOutput | undefined;
   stream?: StreamOutput | undefined;
   segments?:
-    | SegmentedFileOutput
-    | undefined;
+  | SegmentedFileOutput
+  | undefined;
   /** (default H264_720P_30) */
   preset?:
-    | EncodingOptionsPreset
-    | undefined;
+  | EncodingOptionsPreset
+  | undefined;
   /** (optional) */
   advanced?: EncodingOptions | undefined;
 }
@@ -370,13 +370,14 @@ export interface TrackCompositeEgressRequest {
   videoTrackId?: string;
   file?: EncodedFileOutput | undefined;
   stream?: StreamOutput | undefined;
+  fileAndStream?: FileAndStreamOutput| undefined;
   segments?:
-    | SegmentedFileOutput
-    | undefined;
+  | SegmentedFileOutput
+  | undefined;
   /** (default H264_720P_30) */
   preset?:
-    | EncodingOptionsPreset
-    | undefined;
+  | EncodingOptionsPreset
+  | undefined;
   /** (optional) */
   advanced?: EncodingOptions | undefined;
 }
@@ -485,6 +486,28 @@ export interface StreamOutput {
   protocol?: StreamProtocol;
   /** required */
   urls?: string[];
+}
+
+
+export interface FileAndStreamOutput {        //our new output 
+
+  /** (optional) */
+  fileType?: EncodedFileType;
+  /** see egress docs for templating (default {room_name}-{time}) */
+  filepath?: string;
+  /** disable upload of manifest file (default false) */
+
+  /** required */
+  protocol?: StreamProtocol;
+  /** required */
+  urls?: string[];
+
+  disableManifest?: boolean;
+  s3?: S3Upload | undefined;
+  gcp?: GCPUpload | undefined;
+  azure?: AzureBlobUpload | undefined;
+  aliOSS?: AliOSSUpload | undefined;
+
 }
 
 export interface EncodingOptions {
@@ -882,6 +905,7 @@ export const TrackCompositeEgressRequest = {
     message.videoTrackId !== undefined && (obj.videoTrackId = message.videoTrackId);
     message.file !== undefined && (obj.file = message.file ? EncodedFileOutput.toJSON(message.file) : undefined);
     message.stream !== undefined && (obj.stream = message.stream ? StreamOutput.toJSON(message.stream) : undefined);
+    message.fileAndStream !== undefined && (obj.fileAndStream = message.fileAndStream ? FileAndStreamOutput.toJSON(message.fileAndStream) : undefined);
     message.segments !== undefined &&
       (obj.segments = message.segments ? SegmentedFileOutput.toJSON(message.segments) : undefined);
     message.preset !== undefined &&

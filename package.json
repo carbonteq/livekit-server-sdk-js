@@ -21,7 +21,7 @@
     "axios": "^0.21.0",
     "camelcase-keys": "^7.0.0",
     "jsonwebtoken": "^8.5.1",
-    "protobufjs": "^6.10.2"
+    "protobufjs": "^6.11.3"
   },
   "devDependencies": {
     "@types/jest": "^26.0.20",

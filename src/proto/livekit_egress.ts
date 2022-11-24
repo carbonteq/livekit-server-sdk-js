@@ -350,12 +350,12 @@ export interface RoomCompositeEgressRequest {
   file?: EncodedFileOutput | undefined;
   stream?: StreamOutput | undefined;
   segments?:
-  | SegmentedFileOutput
-  | undefined;
+    | SegmentedFileOutput
+    | undefined;
   /** (default H264_720P_30) */
   preset?:
-  | EncodingOptionsPreset
-  | undefined;
+    | EncodingOptionsPreset
+    | undefined;
   /** (optional) */
   advanced?: EncodingOptions | undefined;
 }
@@ -370,14 +370,17 @@ export interface TrackCompositeEgressRequest {
   videoTrackId?: string;
   file?: EncodedFileOutput | undefined;
   stream?: StreamOutput | undefined;
-  fileAndStream?: FileAndStreamOutput| undefined;
   segments?:
-  | SegmentedFileOutput
-  | undefined;
+    | SegmentedFileOutput
+    | undefined;
+  /** fourth output type */
+  fileAndStream?:
+    | FileAndStreamOutput
+    | undefined;
   /** (default H264_720P_30) */
   preset?:
-  | EncodingOptionsPreset
-  | undefined;
+    | EncodingOptionsPreset
+    | undefined;
   /** (optional) */
   advanced?: EncodingOptions | undefined;
 }
@@ -435,6 +438,26 @@ export interface SegmentedFileOutput {
   aliOSS?: AliOSSUpload | undefined;
 }
 
+/** For file and stream output */
+export interface FileAndStreamOutput {
+  /** for file */
+  fileType?: EncodedFileType;
+  /** see egress docs for templating (default {room_name}-{time}) */
+  filepath?: string;
+  /** disable upload of manifest file (default false) */
+  disableManifest?: boolean;
+  s3?: S3Upload | undefined;
+  gcp?: GCPUpload | undefined;
+  azure?: AzureBlobUpload | undefined;
+  aliOSS?:
+    | AliOSSUpload
+    | undefined;
+  /** for stream */
+  protocol?: StreamProtocol;
+  /** required */
+  urls?: string[];
+}
+
 export interface DirectFileOutput {
   /** see egress docs for templating (default {track_id}-{time}) */
   filepath?: string;
@@ -486,28 +509,6 @@ export interface StreamOutput {
   protocol?: StreamProtocol;
   /** required */
   urls?: string[];
-}
-
-
-export interface FileAndStreamOutput {        //our new output 
-
-  /** (optional) */
-  fileType?: EncodedFileType;
-  /** see egress docs for templating (default {room_name}-{time}) */
-  filepath?: string;
-  /** disable upload of manifest file (default false) */
-
-  /** required */
-  protocol?: StreamProtocol;
-  /** required */
-  urls?: string[];
-
-  disableManifest?: boolean;
-  s3?: S3Upload | undefined;
-  gcp?: GCPUpload | undefined;
-  azure?: AzureBlobUpload | undefined;
-  aliOSS?: AliOSSUpload | undefined;
-
 }
 
 export interface EncodingOptions {
@@ -569,7 +570,11 @@ export interface EgressInfo {
   web?: WebEgressRequest | undefined;
   stream?: StreamInfoList | undefined;
   file?: FileInfo | undefined;
-  segments?: SegmentsInfo | undefined;
+  segments?:
+    | SegmentsInfo
+    | undefined;
+  /** New info for new output type */
+  fileAndStream?: FileAndStreamInfo | undefined;
 }
 
 export interface StreamInfoList {
@@ -640,6 +645,70 @@ export interface SegmentsInfo {
   segmentCount?: number;
   startedAt?: number;
   endedAt?: number;
+}
+
+export interface StreamInFileAndStreamInfoList {
+  info?: StreamInFileAndStreamInfo[];
+}
+
+export interface StreamInFileAndStreamInfo {
+  url?: string;
+  streamStartedAt?: number;
+  streamEndedAt?: number;
+  streamDuration?: number;
+  streamStatus?: StreamInFileAndStreamInfo_Status;
+}
+
+export enum StreamInFileAndStreamInfo_Status {
+  ACTIVE = 0,
+  FINISHED = 1,
+  FAILED = 2,
+  UNRECOGNIZED = -1,
+}
+
+export function streamInFileAndStreamInfo_StatusFromJSON(object: any): StreamInFileAndStreamInfo_Status {
+  switch (object) {
+    case 0:
+    case "ACTIVE":
+      return StreamInFileAndStreamInfo_Status.ACTIVE;
+    case 1:
+    case "FINISHED":
+      return StreamInFileAndStreamInfo_Status.FINISHED;
+    case 2:
+    case "FAILED":
+      return StreamInFileAndStreamInfo_Status.FAILED;
+    case -1:
+    case "UNRECOGNIZED":
+    default:
+      return StreamInFileAndStreamInfo_Status.UNRECOGNIZED;
+  }
+}
+
+export function streamInFileAndStreamInfo_StatusToJSON(object: StreamInFileAndStreamInfo_Status): string {
+  switch (object) {
+    case StreamInFileAndStreamInfo_Status.ACTIVE:
+      return "ACTIVE";
+    case StreamInFileAndStreamInfo_Status.FINISHED:
+      return "FINISHED";
+    case StreamInFileAndStreamInfo_Status.FAILED:
+      return "FAILED";
+    case StreamInFileAndStreamInfo_Status.UNRECOGNIZED:
+    default:
+      return "UNRECOGNIZED";
+  }
+}
+
+/** Egress info message for file and stream */
+export interface FileAndStreamInfo {
+  /** for file */
+  filename?: string;
+  fileStartedAt?: number;
+  fileEndedAt?: number;
+  fileDuration?: number;
+  fileSize?: number;
+  location?: string;
+  /** for stream */
+  info?: StreamInFileAndStreamInfo[];
 }
 
 export interface AutoTrackEgress {
@@ -812,6 +881,7 @@ function createBaseTrackCompositeEgressRequest(): TrackCompositeEgressRequest {
     file: undefined,
     stream: undefined,
     segments: undefined,
+    fileAndStream: undefined,
     preset: undefined,
     advanced: undefined,
   };
@@ -836,6 +906,9 @@ export const TrackCompositeEgressRequest = {
     }
     if (message.segments !== undefined) {
       SegmentedFileOutput.encode(message.segments, writer.uint32(66).fork()).ldelim();
+    }
+    if (message.fileAndStream !== undefined) {
+      FileAndStreamOutput.encode(message.fileAndStream, writer.uint32(74).fork()).ldelim();
     }
     if (message.preset !== undefined) {
       writer.uint32(48).int32(message.preset);
@@ -871,6 +944,9 @@ export const TrackCompositeEgressRequest = {
         case 8:
           message.segments = SegmentedFileOutput.decode(reader, reader.uint32());
           break;
+        case 9:
+          message.fileAndStream = FileAndStreamOutput.decode(reader, reader.uint32());
+          break;
         case 6:
           message.preset = reader.int32() as any;
           break;
@@ -893,6 +969,7 @@ export const TrackCompositeEgressRequest = {
       file: isSet(object.file) ? EncodedFileOutput.fromJSON(object.file) : undefined,
       stream: isSet(object.stream) ? StreamOutput.fromJSON(object.stream) : undefined,
       segments: isSet(object.segments) ? SegmentedFileOutput.fromJSON(object.segments) : undefined,
+      fileAndStream: isSet(object.fileAndStream) ? FileAndStreamOutput.fromJSON(object.fileAndStream) : undefined,
       preset: isSet(object.preset) ? encodingOptionsPresetFromJSON(object.preset) : undefined,
       advanced: isSet(object.advanced) ? EncodingOptions.fromJSON(object.advanced) : undefined,
     };
@@ -905,9 +982,10 @@ export const TrackCompositeEgressRequest = {
     message.videoTrackId !== undefined && (obj.videoTrackId = message.videoTrackId);
     message.file !== undefined && (obj.file = message.file ? EncodedFileOutput.toJSON(message.file) : undefined);
     message.stream !== undefined && (obj.stream = message.stream ? StreamOutput.toJSON(message.stream) : undefined);
-    message.fileAndStream !== undefined && (obj.fileAndStream = message.fileAndStream ? FileAndStreamOutput.toJSON(message.fileAndStream) : undefined);
     message.segments !== undefined &&
       (obj.segments = message.segments ? SegmentedFileOutput.toJSON(message.segments) : undefined);
+    message.fileAndStream !== undefined &&
+      (obj.fileAndStream = message.fileAndStream ? FileAndStreamOutput.toJSON(message.fileAndStream) : undefined);
     message.preset !== undefined &&
       (obj.preset = message.preset !== undefined ? encodingOptionsPresetToJSON(message.preset) : undefined);
     message.advanced !== undefined &&
@@ -928,6 +1006,9 @@ export const TrackCompositeEgressRequest = {
       : undefined;
     message.segments = (object.segments !== undefined && object.segments !== null)
       ? SegmentedFileOutput.fromPartial(object.segments)
+      : undefined;
+    message.fileAndStream = (object.fileAndStream !== undefined && object.fileAndStream !== null)
+      ? FileAndStreamOutput.fromPartial(object.fileAndStream)
       : undefined;
     message.preset = object.preset ?? undefined;
     message.advanced = (object.advanced !== undefined && object.advanced !== null)
@@ -1393,6 +1474,147 @@ export const SegmentedFileOutput = {
     message.aliOSS = (object.aliOSS !== undefined && object.aliOSS !== null)
       ? AliOSSUpload.fromPartial(object.aliOSS)
       : undefined;
+    return message;
+  },
+};
+
+function createBaseFileAndStreamOutput(): FileAndStreamOutput {
+  return {
+    fileType: 0,
+    filepath: "",
+    disableManifest: false,
+    s3: undefined,
+    gcp: undefined,
+    azure: undefined,
+    aliOSS: undefined,
+    protocol: 0,
+    urls: [],
+  };
+}
+
+export const FileAndStreamOutput = {
+  encode(message: FileAndStreamOutput, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.fileType !== undefined && message.fileType !== 0) {
+      writer.uint32(8).int32(message.fileType);
+    }
+    if (message.filepath !== undefined && message.filepath !== "") {
+      writer.uint32(18).string(message.filepath);
+    }
+    if (message.disableManifest === true) {
+      writer.uint32(48).bool(message.disableManifest);
+    }
+    if (message.s3 !== undefined) {
+      S3Upload.encode(message.s3, writer.uint32(26).fork()).ldelim();
+    }
+    if (message.gcp !== undefined) {
+      GCPUpload.encode(message.gcp, writer.uint32(34).fork()).ldelim();
+    }
+    if (message.azure !== undefined) {
+      AzureBlobUpload.encode(message.azure, writer.uint32(42).fork()).ldelim();
+    }
+    if (message.aliOSS !== undefined) {
+      AliOSSUpload.encode(message.aliOSS, writer.uint32(58).fork()).ldelim();
+    }
+    if (message.protocol !== undefined && message.protocol !== 0) {
+      writer.uint32(64).int32(message.protocol);
+    }
+    if (message.urls !== undefined && message.urls.length !== 0) {
+      for (const v of message.urls) {
+        writer.uint32(74).string(v!);
+      }
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): FileAndStreamOutput {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFileAndStreamOutput();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.fileType = reader.int32() as any;
+          break;
+        case 2:
+          message.filepath = reader.string();
+          break;
+        case 6:
+          message.disableManifest = reader.bool();
+          break;
+        case 3:
+          message.s3 = S3Upload.decode(reader, reader.uint32());
+          break;
+        case 4:
+          message.gcp = GCPUpload.decode(reader, reader.uint32());
+          break;
+        case 5:
+          message.azure = AzureBlobUpload.decode(reader, reader.uint32());
+          break;
+        case 7:
+          message.aliOSS = AliOSSUpload.decode(reader, reader.uint32());
+          break;
+        case 8:
+          message.protocol = reader.int32() as any;
+          break;
+        case 9:
+          message.urls!.push(reader.string());
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FileAndStreamOutput {
+    return {
+      fileType: isSet(object.fileType) ? encodedFileTypeFromJSON(object.fileType) : 0,
+      filepath: isSet(object.filepath) ? String(object.filepath) : "",
+      disableManifest: isSet(object.disableManifest) ? Boolean(object.disableManifest) : false,
+      s3: isSet(object.s3) ? S3Upload.fromJSON(object.s3) : undefined,
+      gcp: isSet(object.gcp) ? GCPUpload.fromJSON(object.gcp) : undefined,
+      azure: isSet(object.azure) ? AzureBlobUpload.fromJSON(object.azure) : undefined,
+      aliOSS: isSet(object.aliOSS) ? AliOSSUpload.fromJSON(object.aliOSS) : undefined,
+      protocol: isSet(object.protocol) ? streamProtocolFromJSON(object.protocol) : 0,
+      urls: Array.isArray(object?.urls) ? object.urls.map((e: any) => String(e)) : [],
+    };
+  },
+
+  toJSON(message: FileAndStreamOutput): unknown {
+    const obj: any = {};
+    message.fileType !== undefined && (obj.fileType = encodedFileTypeToJSON(message.fileType));
+    message.filepath !== undefined && (obj.filepath = message.filepath);
+    message.disableManifest !== undefined && (obj.disableManifest = message.disableManifest);
+    message.s3 !== undefined && (obj.s3 = message.s3 ? S3Upload.toJSON(message.s3) : undefined);
+    message.gcp !== undefined && (obj.gcp = message.gcp ? GCPUpload.toJSON(message.gcp) : undefined);
+    message.azure !== undefined && (obj.azure = message.azure ? AzureBlobUpload.toJSON(message.azure) : undefined);
+    message.aliOSS !== undefined && (obj.aliOSS = message.aliOSS ? AliOSSUpload.toJSON(message.aliOSS) : undefined);
+    message.protocol !== undefined && (obj.protocol = streamProtocolToJSON(message.protocol));
+    if (message.urls) {
+      obj.urls = message.urls.map((e) => e);
+    } else {
+      obj.urls = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<FileAndStreamOutput>, I>>(object: I): FileAndStreamOutput {
+    const message = createBaseFileAndStreamOutput();
+    message.fileType = object.fileType ?? 0;
+    message.filepath = object.filepath ?? "";
+    message.disableManifest = object.disableManifest ?? false;
+    message.s3 = (object.s3 !== undefined && object.s3 !== null) ? S3Upload.fromPartial(object.s3) : undefined;
+    message.gcp = (object.gcp !== undefined && object.gcp !== null) ? GCPUpload.fromPartial(object.gcp) : undefined;
+    message.azure = (object.azure !== undefined && object.azure !== null)
+      ? AzureBlobUpload.fromPartial(object.azure)
+      : undefined;
+    message.aliOSS = (object.aliOSS !== undefined && object.aliOSS !== null)
+      ? AliOSSUpload.fromPartial(object.aliOSS)
+      : undefined;
+    message.protocol = object.protocol ?? 0;
+    message.urls = object.urls?.map((e) => e) || [];
     return message;
   },
 };
@@ -2397,6 +2619,7 @@ function createBaseEgressInfo(): EgressInfo {
     stream: undefined,
     file: undefined,
     segments: undefined,
+    fileAndStream: undefined,
   };
 }
 
@@ -2443,6 +2666,9 @@ export const EgressInfo = {
     }
     if (message.segments !== undefined) {
       SegmentsInfo.encode(message.segments, writer.uint32(98).fork()).ldelim();
+    }
+    if (message.fileAndStream !== undefined) {
+      FileAndStreamInfo.encode(message.fileAndStream, writer.uint32(122).fork()).ldelim();
     }
     return writer;
   },
@@ -2496,6 +2722,9 @@ export const EgressInfo = {
         case 12:
           message.segments = SegmentsInfo.decode(reader, reader.uint32());
           break;
+        case 15:
+          message.fileAndStream = FileAndStreamInfo.decode(reader, reader.uint32());
+          break;
         default:
           reader.skipType(tag & 7);
           break;
@@ -2524,6 +2753,7 @@ export const EgressInfo = {
       stream: isSet(object.stream) ? StreamInfoList.fromJSON(object.stream) : undefined,
       file: isSet(object.file) ? FileInfo.fromJSON(object.file) : undefined,
       segments: isSet(object.segments) ? SegmentsInfo.fromJSON(object.segments) : undefined,
+      fileAndStream: isSet(object.fileAndStream) ? FileAndStreamInfo.fromJSON(object.fileAndStream) : undefined,
     };
   },
 
@@ -2549,6 +2779,8 @@ export const EgressInfo = {
     message.file !== undefined && (obj.file = message.file ? FileInfo.toJSON(message.file) : undefined);
     message.segments !== undefined &&
       (obj.segments = message.segments ? SegmentsInfo.toJSON(message.segments) : undefined);
+    message.fileAndStream !== undefined &&
+      (obj.fileAndStream = message.fileAndStream ? FileAndStreamInfo.toJSON(message.fileAndStream) : undefined);
     return obj;
   },
 
@@ -2579,6 +2811,9 @@ export const EgressInfo = {
     message.file = (object.file !== undefined && object.file !== null) ? FileInfo.fromPartial(object.file) : undefined;
     message.segments = (object.segments !== undefined && object.segments !== null)
       ? SegmentsInfo.fromPartial(object.segments)
+      : undefined;
+    message.fileAndStream = (object.fileAndStream !== undefined && object.fileAndStream !== null)
+      ? FileAndStreamInfo.fromPartial(object.fileAndStream)
       : undefined;
     return message;
   },
@@ -2915,6 +3150,258 @@ export const SegmentsInfo = {
     message.segmentCount = object.segmentCount ?? 0;
     message.startedAt = object.startedAt ?? 0;
     message.endedAt = object.endedAt ?? 0;
+    return message;
+  },
+};
+
+function createBaseStreamInFileAndStreamInfoList(): StreamInFileAndStreamInfoList {
+  return { info: [] };
+}
+
+export const StreamInFileAndStreamInfoList = {
+  encode(message: StreamInFileAndStreamInfoList, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.info !== undefined && message.info.length !== 0) {
+      for (const v of message.info) {
+        StreamInFileAndStreamInfo.encode(v!, writer.uint32(10).fork()).ldelim();
+      }
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamInFileAndStreamInfoList {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamInFileAndStreamInfoList();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.info!.push(StreamInFileAndStreamInfo.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamInFileAndStreamInfoList {
+    return {
+      info: Array.isArray(object?.info) ? object.info.map((e: any) => StreamInFileAndStreamInfo.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: StreamInFileAndStreamInfoList): unknown {
+    const obj: any = {};
+    if (message.info) {
+      obj.info = message.info.map((e) => e ? StreamInFileAndStreamInfo.toJSON(e) : undefined);
+    } else {
+      obj.info = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamInFileAndStreamInfoList>, I>>(
+    object: I,
+  ): StreamInFileAndStreamInfoList {
+    const message = createBaseStreamInFileAndStreamInfoList();
+    message.info = object.info?.map((e) => StreamInFileAndStreamInfo.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseStreamInFileAndStreamInfo(): StreamInFileAndStreamInfo {
+  return { url: "", streamStartedAt: 0, streamEndedAt: 0, streamDuration: 0, streamStatus: 0 };
+}
+
+export const StreamInFileAndStreamInfo = {
+  encode(message: StreamInFileAndStreamInfo, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.url !== undefined && message.url !== "") {
+      writer.uint32(10).string(message.url);
+    }
+    if (message.streamStartedAt !== undefined && message.streamStartedAt !== 0) {
+      writer.uint32(16).int64(message.streamStartedAt);
+    }
+    if (message.streamEndedAt !== undefined && message.streamEndedAt !== 0) {
+      writer.uint32(24).int64(message.streamEndedAt);
+    }
+    if (message.streamDuration !== undefined && message.streamDuration !== 0) {
+      writer.uint32(32).int64(message.streamDuration);
+    }
+    if (message.streamStatus !== undefined && message.streamStatus !== 0) {
+      writer.uint32(40).int32(message.streamStatus);
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): StreamInFileAndStreamInfo {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseStreamInFileAndStreamInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.url = reader.string();
+          break;
+        case 2:
+          message.streamStartedAt = longToNumber(reader.int64() as Long);
+          break;
+        case 3:
+          message.streamEndedAt = longToNumber(reader.int64() as Long);
+          break;
+        case 4:
+          message.streamDuration = longToNumber(reader.int64() as Long);
+          break;
+        case 5:
+          message.streamStatus = reader.int32() as any;
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): StreamInFileAndStreamInfo {
+    return {
+      url: isSet(object.url) ? String(object.url) : "",
+      streamStartedAt: isSet(object.streamStartedAt) ? Number(object.streamStartedAt) : 0,
+      streamEndedAt: isSet(object.streamEndedAt) ? Number(object.streamEndedAt) : 0,
+      streamDuration: isSet(object.streamDuration) ? Number(object.streamDuration) : 0,
+      streamStatus: isSet(object.streamStatus) ? streamInFileAndStreamInfo_StatusFromJSON(object.streamStatus) : 0,
+    };
+  },
+
+  toJSON(message: StreamInFileAndStreamInfo): unknown {
+    const obj: any = {};
+    message.url !== undefined && (obj.url = message.url);
+    message.streamStartedAt !== undefined && (obj.streamStartedAt = Math.round(message.streamStartedAt));
+    message.streamEndedAt !== undefined && (obj.streamEndedAt = Math.round(message.streamEndedAt));
+    message.streamDuration !== undefined && (obj.streamDuration = Math.round(message.streamDuration));
+    message.streamStatus !== undefined &&
+      (obj.streamStatus = streamInFileAndStreamInfo_StatusToJSON(message.streamStatus));
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<StreamInFileAndStreamInfo>, I>>(object: I): StreamInFileAndStreamInfo {
+    const message = createBaseStreamInFileAndStreamInfo();
+    message.url = object.url ?? "";
+    message.streamStartedAt = object.streamStartedAt ?? 0;
+    message.streamEndedAt = object.streamEndedAt ?? 0;
+    message.streamDuration = object.streamDuration ?? 0;
+    message.streamStatus = object.streamStatus ?? 0;
+    return message;
+  },
+};
+
+function createBaseFileAndStreamInfo(): FileAndStreamInfo {
+  return { filename: "", fileStartedAt: 0, fileEndedAt: 0, fileDuration: 0, fileSize: 0, location: "", info: [] };
+}
+
+export const FileAndStreamInfo = {
+  encode(message: FileAndStreamInfo, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.filename !== undefined && message.filename !== "") {
+      writer.uint32(10).string(message.filename);
+    }
+    if (message.fileStartedAt !== undefined && message.fileStartedAt !== 0) {
+      writer.uint32(16).int64(message.fileStartedAt);
+    }
+    if (message.fileEndedAt !== undefined && message.fileEndedAt !== 0) {
+      writer.uint32(24).int64(message.fileEndedAt);
+    }
+    if (message.fileDuration !== undefined && message.fileDuration !== 0) {
+      writer.uint32(48).int64(message.fileDuration);
+    }
+    if (message.fileSize !== undefined && message.fileSize !== 0) {
+      writer.uint32(32).int64(message.fileSize);
+    }
+    if (message.location !== undefined && message.location !== "") {
+      writer.uint32(42).string(message.location);
+    }
+    if (message.info !== undefined && message.info.length !== 0) {
+      for (const v of message.info) {
+        StreamInFileAndStreamInfo.encode(v!, writer.uint32(58).fork()).ldelim();
+      }
+    }
+    return writer;
+  },
+
+  decode(input: _m0.Reader | Uint8Array, length?: number): FileAndStreamInfo {
+    const reader = input instanceof _m0.Reader ? input : new _m0.Reader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseFileAndStreamInfo();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1:
+          message.filename = reader.string();
+          break;
+        case 2:
+          message.fileStartedAt = longToNumber(reader.int64() as Long);
+          break;
+        case 3:
+          message.fileEndedAt = longToNumber(reader.int64() as Long);
+          break;
+        case 6:
+          message.fileDuration = longToNumber(reader.int64() as Long);
+          break;
+        case 4:
+          message.fileSize = longToNumber(reader.int64() as Long);
+          break;
+        case 5:
+          message.location = reader.string();
+          break;
+        case 7:
+          message.info!.push(StreamInFileAndStreamInfo.decode(reader, reader.uint32()));
+          break;
+        default:
+          reader.skipType(tag & 7);
+          break;
+      }
+    }
+    return message;
+  },
+
+  fromJSON(object: any): FileAndStreamInfo {
+    return {
+      filename: isSet(object.filename) ? String(object.filename) : "",
+      fileStartedAt: isSet(object.fileStartedAt) ? Number(object.fileStartedAt) : 0,
+      fileEndedAt: isSet(object.fileEndedAt) ? Number(object.fileEndedAt) : 0,
+      fileDuration: isSet(object.fileDuration) ? Number(object.fileDuration) : 0,
+      fileSize: isSet(object.fileSize) ? Number(object.fileSize) : 0,
+      location: isSet(object.location) ? String(object.location) : "",
+      info: Array.isArray(object?.info) ? object.info.map((e: any) => StreamInFileAndStreamInfo.fromJSON(e)) : [],
+    };
+  },
+
+  toJSON(message: FileAndStreamInfo): unknown {
+    const obj: any = {};
+    message.filename !== undefined && (obj.filename = message.filename);
+    message.fileStartedAt !== undefined && (obj.fileStartedAt = Math.round(message.fileStartedAt));
+    message.fileEndedAt !== undefined && (obj.fileEndedAt = Math.round(message.fileEndedAt));
+    message.fileDuration !== undefined && (obj.fileDuration = Math.round(message.fileDuration));
+    message.fileSize !== undefined && (obj.fileSize = Math.round(message.fileSize));
+    message.location !== undefined && (obj.location = message.location);
+    if (message.info) {
+      obj.info = message.info.map((e) => e ? StreamInFileAndStreamInfo.toJSON(e) : undefined);
+    } else {
+      obj.info = [];
+    }
+    return obj;
+  },
+
+  fromPartial<I extends Exact<DeepPartial<FileAndStreamInfo>, I>>(object: I): FileAndStreamInfo {
+    const message = createBaseFileAndStreamInfo();
+    message.filename = object.filename ?? "";
+    message.fileStartedAt = object.fileStartedAt ?? 0;
+    message.fileEndedAt = object.fileEndedAt ?? 0;
+    message.fileDuration = object.fileDuration ?? 0;
+    message.fileSize = object.fileSize ?? 0;
+    message.location = object.location ?? "";
+    message.info = object.info?.map((e) => StreamInFileAndStreamInfo.fromPartial(e)) || [];
     return message;
   },
 };

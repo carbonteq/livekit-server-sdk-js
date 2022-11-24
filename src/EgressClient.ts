@@ -202,7 +202,7 @@ export class EgressClient extends ServiceBase {
 
   /**
    * @param roomName room name
-   * @param output file or stream output
+   * @param output file or stream or fileAndStream output
    * @param opts TrackCompositeOptions
    */
   async startTrackCompositeEgress(
@@ -242,7 +242,7 @@ export class EgressClient extends ServiceBase {
     audioTrackId ??= '';
     videoTrackId ??= '';
 
-    const { file, segments, stream,fileAndStream, preset, advanced } = this.getOutputParams(output, options);
+    const { file, segments, stream, fileAndStream, preset, advanced } = this.getOutputParams(output, options);
     const req = TrackCompositeEgressRequest.toJSON({
       roomName,
       audioTrackId,
@@ -279,8 +279,7 @@ export class EgressClient extends ServiceBase {
       file = <EncodedFileOutput>output;
     } else if ((<SegmentedFileOutput>output).filenamePrefix !== undefined) {
       segments = <SegmentedFileOutput>output;
-    } else if ((<FileAndStreamOutput>output).filepath !== undefined) {
-
+    } else if ((<FileAndStreamOutput>output).filepath !== undefined && (<FileAndStreamOutput>output)?.urls !== [] && (<FileAndStreamOutput>output).protocol !== undefined) {
       fileAndStream = <FileAndStreamOutput>output;
     }
     else {
@@ -295,7 +294,7 @@ export class EgressClient extends ServiceBase {
       }
     }
 
-    return { file, segments, stream,fileAndStream, preset, advanced };
+    return { file, segments, stream, fileAndStream, preset, advanced };
   }
 
   /**

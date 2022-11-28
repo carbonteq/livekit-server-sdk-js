@@ -279,7 +279,7 @@ export class EgressClient extends ServiceBase {
       file = <EncodedFileOutput>output;
     } else if ((<SegmentedFileOutput>output).filenamePrefix !== undefined) {
       segments = <SegmentedFileOutput>output;
-    } else if ((<FileAndStreamOutput>output).filepath !== undefined && (<FileAndStreamOutput>output)?.urls !== [] && (<FileAndStreamOutput>output).protocol !== undefined) {
+    } else if ((<FileAndStreamOutput>output).filepath !== undefined && (<FileAndStreamOutput>output)?.urls?.length !== 0 && (<FileAndStreamOutput>output).protocol !== undefined) {
       fileAndStream = <FileAndStreamOutput>output;
     }
     else {

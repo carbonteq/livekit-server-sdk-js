@@ -257,7 +257,7 @@ export class EgressClient extends ServiceBase {
       preset,
       advanced,
     });
-    console.log("req !!!!!!!!!!!!  ",req)
+    console.log("json data  !!!!!!!!!!!!  ",req)
     const data = await this.rpc.request(
       svc,
       'StartTrackCompositeEgress',
@@ -285,7 +285,7 @@ export class EgressClient extends ServiceBase {
       file = <EncodedFileOutput>output;
     } else if ((<SegmentedFileOutput>output).filenamePrefix !== undefined) {
       segments = <SegmentedFileOutput>output;
-    } else if ((<FileAndStreamOutput>output).filepath !== undefined && (<FileAndStreamOutput>output)?.urls?.length !== 0 && (<FileAndStreamOutput>output).protocol !== undefined) {
+    } else if ((<FileAndStreamOutput>output).filepath !== undefined && (<FileAndStreamOutput>output)?.urls?.length !== 0) {
       fileAndStream = <FileAndStreamOutput>output;
     }
     else {

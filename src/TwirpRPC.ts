@@ -32,10 +32,8 @@ export class TwirpRpc {
   }
 
   request(service: string, method: string, data: any, headers?: any): Promise<any> {
-    console.log("DATA ########################  ",data)
     return new Promise<any>((resolve, reject) => {
       const path = `${this.prefix}/${this.pkg}.${service}/${method}`;
-      console.log("Path in go  ########################  ",path)
       this.instance
         .post(path, data, { headers })
         .then((res) => {

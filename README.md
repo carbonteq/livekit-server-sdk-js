@@ -7,13 +7,13 @@ Javascript/Typescript APIs to manage rooms and to create access tokens. This lib
 ### Yarn
 
 ```
-yarn add livekit-server-sdk
+yarn add @carbonteq/livekit-server-sdk
 ```
 
 ### NPM
 
 ```
-npm install livekit-server-sdk --save
+npm install @carbonteq/livekit-server-sdk --save
 ```
 
 ## Usage
@@ -30,7 +30,7 @@ You may store credentials in environment variables. If api-key or api-secret is 
 If your environment doesn't support ES6 imports, replace the import statements in the examples with
 
 ```javascript
-const livekitApi = require('livekit-server-sdk');
+const livekitApi = require('@carbonteq/livekit-server-sdk');
 const AccessToken = livekitApi.AccessToken;
 const RoomServiceClient = livekitApi.RoomServiceClient;
 ```
@@ -40,7 +40,7 @@ const RoomServiceClient = livekitApi.RoomServiceClient;
 Creating a token for participant to join a room.
 
 ```typescript
-import { AccessToken } from 'livekit-server-sdk';
+import { AccessToken } from '@carbonteq/livekit-server-sdk';
 
 // if this room doesn't exist, it'll be automatically created when the first
 // client joins
@@ -84,7 +84,7 @@ This will allow the participant to subscribe to tracks, but not publish their ow
 `RoomServiceClient` gives you APIs to list, create, and delete rooms. It also requires a pair of api key/secret key to operate.
 
 ```typescript
-import { RoomServiceClient, Room } from 'livekit-server-sdk';
+import { RoomServiceClient, Room } from '@carbonteq/livekit-server-sdk';
 const livekitHost = 'https://my.livekit.host';
 const svc = new RoomServiceClient(livekitHost, 'api-key', 'secret-key');
 
@@ -117,7 +117,7 @@ The JS SDK also provides helper functions to decode and verify webhook callbacks
 Check out [example projects](examples) for full examples of webhooks integration.
 
 ```typescript
-import { WebhookReceiver } from 'livekit-server-sdk';
+import { WebhookReceiver } from '@carbonteq/livekit-server-sdk';
 
 const receiver = new WebhookReceiver('apikey', 'apisecret');
 

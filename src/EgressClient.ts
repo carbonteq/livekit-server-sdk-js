@@ -162,7 +162,6 @@ export class EgressClient extends ServiceBase {
       this.authHeader({ roomRecord: true }),
     );
 
-
     return EgressInfo.fromJSON(data);
   }
 
@@ -244,7 +243,10 @@ export class EgressClient extends ServiceBase {
     audioTrackId ??= '';
     videoTrackId ??= '';
 
-    const { file, segments, stream, fileAndStream, preset, advanced } = this.getOutputParams(output, options);
+    const { file, segments, stream, fileAndStream, preset, advanced } = this.getOutputParams(
+      output,
+      options,
+    );
     const req = TrackCompositeEgressRequest.toJSON({
       roomName,
       audioTrackId,
@@ -277,16 +279,20 @@ export class EgressClient extends ServiceBase {
     let preset: EncodingOptionsPreset | undefined;
     let advanced: EncodingOptions | undefined;
 
-    console.log("     OUTPUT PARAMS ###########    ", output)
-    if ((<EncodedFileOutput>output).filepath !== undefined && (<StreamOutput>output).urls === undefined) {
-
+    if (
+      (<EncodedFileOutput>output).filepath !== undefined &&
+      (<StreamOutput>output).urls === undefined
+    ) {
       file = <EncodedFileOutput>output;
     } else if ((<SegmentedFileOutput>output).filenamePrefix !== undefined) {
       segments = <SegmentedFileOutput>output;
-    } else if ((<FileAndStreamOutput>output).filepath !== undefined && (<FileAndStreamOutput>output)?.urls?.length !== 0 && (<FileAndStreamOutput>output).protocol !== undefined) {
+    } else if (
+      (<FileAndStreamOutput>output).filepath !== undefined &&
+      (<FileAndStreamOutput>output)?.urls?.length !== 0 &&
+      (<FileAndStreamOutput>output).protocol !== undefined
+    ) {
       fileAndStream = <FileAndStreamOutput>output;
-    }
-    else {
+    } else {
       stream = <StreamOutput>output;
     }
 
